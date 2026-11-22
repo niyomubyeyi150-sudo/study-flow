@@ -1,10 +1,25 @@
+import useLocalStorage from "../hooks/useLocalStorage";
+
 function DashboardPage() {
-  // Temporary dashboard values
-  const totalTasks = 6;
-  const completedTasks = 2;
+  // Get the same tasks saved by the Tasks page
+  const [tasks] = useLocalStorage("studyflow-tasks", []);
+
+  // Calculate task statistics
+  const totalTasks = tasks.length;
+
+  const completedTasks = tasks.filter((task) => task.completed).length;
+
   const pendingTasks = totalTasks - completedTasks;
 
-  const progress = Math.round((completedTasks / totalTasks) * 100);
+  // Calculate completion percentage
+  const progress =
+    totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+  // Get the three nearest pending tasks
+  const upcomingTasks = tasks
+    .filter((task) => !task.completed)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, 3);
 
   return (
     <main className="min-h-screen bg-[#F7F4EF]">
@@ -12,10 +27,7 @@ function DashboardPage() {
         {/* Welcome section */}
         <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#806A91]">
-              Your study workspace
-            </p>
-
+            <p></p>
             <h1 className="text-3xl font-bold tracking-tight text-[#302B32]">
               Welcome back!
             </h1>
@@ -42,6 +54,7 @@ function DashboardPage() {
               <p className="text-sm font-semibold text-[#685675]">
                 Total tasks
               </p>
+
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 text-lg text-[#806A91]">
                 ▤
               </span>
@@ -60,6 +73,7 @@ function DashboardPage() {
           <div className="rounded-2xl border border-[#E2E4DC] bg-[#E9ECE5] p-6">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[#58634F]">Completed</p>
+
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 text-lg text-[#687B61]">
                 ✓
               </span>
@@ -78,6 +92,7 @@ function DashboardPage() {
           <div className="rounded-2xl border border-[#EBD9DE] bg-[#F1E1E3] p-6">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[#875E6C]">Pending</p>
+
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 text-lg text-[#A36F80]">
                 ◷
               </span>
@@ -100,6 +115,7 @@ function DashboardPage() {
                 <h2 className="text-lg font-bold text-[#302B32]">
                   Upcoming tasks
                 </h2>
+
                 <p className="mt-1 text-sm text-[#938B94]">
                   Stay on top of your study schedule
                 </p>
@@ -113,26 +129,60 @@ function DashboardPage() {
               </a>
             </div>
 
-            <div className="mt-6 flex min-h-44 flex-col items-center justify-center rounded-2xl bg-[#F8F5FA] px-5 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAE2F1] text-xl text-[#806A91]">
-                ✦
-              </div>
+            {/* Display upcoming tasks */}
+            <div className="mt-6 space-y-3">
+              {upcomingTasks.length > 0 ? (
+                upcomingTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex flex-col justify-between gap-3 rounded-xl border border-[#EEE9E5] p-4 sm:flex-row sm:items-center"
+                  >
+                    <div>
+                      <h3 className="font-semibold text-[#302B32]">
+                        {task.title}
+                      </h3>
 
-              <p className="text-sm font-semibold text-[#493A55]">
-                Your next achievement starts here
-              </p>
+                      <p className="mt-1 text-xs text-[#938B94]">
+                        {task.subject} · Due {task.dueDate}
+                      </p>
+                    </div>
 
-              <p className="mt-2 max-w-sm text-xs leading-5 text-[#938B94]">
-                Your upcoming study tasks will appear here. Add a task and start
-                organizing your learning.
-              </p>
+                    <span
+                      className={`w-fit rounded-lg px-3 py-1 text-xs font-semibold ${
+                        task.priority === "High"
+                          ? "bg-[#F1E1E3] text-[#79505F]"
+                          : task.priority === "Medium"
+                            ? "bg-[#EAE2F1] text-[#685675]"
+                            : "bg-[#E9ECE5] text-[#58634F]"
+                      }`}
+                    >
+                      {task.priority}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl bg-[#F8F5FA] px-5 text-center">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAE2F1] text-xl text-[#806A91]">
+                    ✦
+                  </div>
 
-              <a
-                href="/tasks"
-                className="mt-4 text-xs font-bold text-[#806A91] hover:underline"
-              >
-                Add your first task
-              </a>
+                  <p className="text-sm font-semibold text-[#493A55]">
+                    No upcoming tasks
+                  </p>
+
+                  <p className="mt-2 max-w-sm text-xs leading-5 text-[#938B94]">
+                    Your upcoming study tasks will appear here. Add a task and
+                    start organizing your learning.
+                  </p>
+
+                  <a
+                    href="/tasks"
+                    className="mt-4 text-xs font-bold text-[#806A91] hover:underline"
+                  >
+                    Add your first task
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -159,7 +209,11 @@ function DashboardPage() {
               </div>
 
               <p className="mt-5 text-center text-sm font-bold text-[#493A55]">
-                Good progress!
+                {progress === 100
+                  ? "All tasks completed!"
+                  : progress > 0
+                    ? "Good progress!"
+                    : "Ready to get started?"}
               </p>
 
               <p className="mt-1 text-center text-xs text-[#938B94]">
@@ -173,6 +227,7 @@ function DashboardPage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-[#819176]" />
                   <span className="text-[#766F78]">Completed</span>
                 </div>
+
                 <span className="font-semibold text-[#465641]">
                   {completedTasks}
                 </span>
@@ -183,6 +238,7 @@ function DashboardPage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-[#C48C9B]" />
                   <span className="text-[#766F78]">Remaining</span>
                 </div>
+
                 <span className="font-semibold text-[#79505F]">
                   {pendingTasks}
                 </span>
