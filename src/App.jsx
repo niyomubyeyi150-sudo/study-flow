@@ -4,8 +4,8 @@ import SiteLayout from "./layouts/SiteLayout";
 
 import DashboardPage from "./pages/DashboardPage";
  import TasksPage from "./pages/TasksPage";
-// import FocusPage from "./pages/FocusPage";
-// import SettingsPage from "./pages/SettingsPage";
+ import FocusPage from "./pages/FocusPage";
+ import SettingsPage from "./pages/SettingsPage";
 
 function NotFoundPage() {
   return (
@@ -37,9 +37,9 @@ function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/tasks" element={<TasksPage />} />
-          {/* <Route path="/focus" element={<FocusPage />} />
+          <Route path="/focus" element={<FocusPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<NotFoundPage />} />*/}
+          {/* <Route path="*" element={<NotFoundPage />} />*/}
         </Routes>
       </SiteLayout>
     </BrowserRouter>

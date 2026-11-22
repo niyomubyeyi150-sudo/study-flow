@@ -20,6 +20,11 @@ function DashboardPage() {
     .filter((task) => !task.completed)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 3);
+    const [settings] = useLocalStorage("studyflow-settings", {
+      displayName: "",
+      studyDuration: 25,
+      compactMode: false,
+    });
 
   return (
     <main className="min-h-screen bg-[#F7F4EF]">
@@ -28,8 +33,9 @@ function DashboardPage() {
         <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
             <p></p>
-            <h1 className="text-3xl font-bold tracking-tight text-[#302B32]">
-              Welcome back!
+            <h1>
+              Welcome back
+              {settings.displayName ? `, ${settings.displayName}` : ""}!
             </h1>
 
             <p className="mt-2 text-sm text-[#766F78]">
