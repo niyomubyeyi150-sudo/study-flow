@@ -1,8 +1,11 @@
 import { useState } from "react";
 import initialTasks from "../data/initialTasks";
 import useLocalStorage from "../hooks/useLocalStorage";
-
+import useToggle from "../hooks/useToggle";
+import useDocumentTitle from "../hooks/useDocumentTitle";
+import useDebounce from "../hooks/useDebounce";
 function TasksPage() {
+  useDocumentTitle("tasks");
 const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
 
   // Form states
@@ -13,11 +16,12 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
   const [error, setError] = useState("");
 
   // Modal and editing states
-  const [isFormOpen, setIsFormOpen] = useState(false);
+ const [isFormOpen, toggleForm, setIsFormOpen] = useToggle(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
 
   // Search, filter, and sort states
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [filter, setFilter] = useState("All");
   const [sortBy, setSortBy] = useState("dueDate");
 
@@ -34,7 +38,7 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
   // Open form for adding a task
   const openAddForm = () => {
     resetForm();
-    setIsFormOpen(true);
+  toggleForm();
   };
 
   // Close form
@@ -131,41 +135,34 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
   };
 
   // Filter and sort tasks
-  const filteredTasks = tasks
-    .filter((task) => {
-      const matchesSearch =
-        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.subject.toLowerCase().includes(searchTerm.toLowerCase());
+ const filteredTasks = tasks
+   .filter((task) => {
+     return (
+       task.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+       task.subject.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+     );
+   })
+   .sort((a, b) => {
+     if (sortBy === "dueDate") {
+       return a.dueDate.localeCompare(b.dueDate);
+     }
 
-      const matchesFilter =
-        filter === "All" ||
-        (filter === "Completed" && task.completed) ||
-        (filter === "Pending" && !task.completed) ||
-        task.priority === filter;
+     if (sortBy === "title") {
+       return a.title.localeCompare(b.title);
+     }
 
-      return matchesSearch && matchesFilter;
-    })
-    .sort((a, b) => {
-      if (sortBy === "dueDate") {
-        return a.dueDate.localeCompare(b.dueDate);
-      }
+     if (sortBy === "priority") {
+       const priorityOrder = {
+         High: 1,
+         Medium: 2,
+         Low: 3,
+       };
 
-      if (sortBy === "title") {
-        return a.title.localeCompare(b.title);
-      }
+       return priorityOrder[a.priority] - priorityOrder[b.priority];
+     }
 
-      if (sortBy === "priority") {
-        const priorityOrder = {
-          High: 1,
-          Medium: 2,
-          Low: 3,
-        };
-
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
-      }
-
-      return 0;
-    });
+     return 0;
+   });
 
   const completedCount = tasks.filter((task) => task.completed).length;
   const pendingCount = tasks.length - completedCount;

@@ -1,21 +1,15 @@
 import useLocalStorage from "../hooks/useLocalStorage";
-
+import useDocumentTitle from "../hooks/useDocumentTitle";
+import { useTasks } from "../context/TasksContext";
 function DashboardPage() {
-  // Get the same tasks saved by the Tasks page
-  const [tasks] = useLocalStorage("studyflow-tasks", []);
-
-  // Calculate task statistics
+  useDocumentTitle("Dashboard");
+  
+ const { tasks } = useTasks();
   const totalTasks = tasks.length;
-
   const completedTasks = tasks.filter((task) => task.completed).length;
-
   const pendingTasks = totalTasks - completedTasks;
-
-  // Calculate completion percentage
   const progress =
     totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
-
-  // Get the three nearest pending tasks
   const upcomingTasks = tasks
     .filter((task) => !task.completed)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))

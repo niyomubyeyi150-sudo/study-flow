@@ -1,6 +1,6 @@
 import { useState } from "react";
 import useLocalStorage from "../hooks/useLocalStorage";
-
+import useDocumentTitle from "../hooks/useDocumentTitle";
 const defaultSettings = {
   displayName: "",
   studyDuration: 25,
@@ -8,6 +8,7 @@ const defaultSettings = {
 };
 
 function SettingsPage() {
+  	useDocumentTitle("Settings");
   const [savedSettings, setSavedSettings] = useLocalStorage(
     "studyflow-settings",
     defaultSettings,

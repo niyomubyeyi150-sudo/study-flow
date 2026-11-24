@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import useLocalStorage from "../hooks/useLocalStorage";
-
+import useDocumentTitle from "../hooks/useDocumentTitle";
 function FocusPage() {
+  useDocumentTitle("Focus");
   // Read the saved preferences from Settings
   const [savedSettings] = useLocalStorage("studyflow-settings", {
     displayName: "",
