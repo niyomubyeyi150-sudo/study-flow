@@ -1,253 +1,380 @@
+import { Link } from "react-router-dom";
+import { useTasks } from "../context/TasksContext";
 import useLocalStorage from "../hooks/useLocalStorage";
 import useDocumentTitle from "../hooks/useDocumentTitle";
-import { useTasks } from "../context/TasksContext";
+
 function DashboardPage() {
   useDocumentTitle("Dashboard");
-  
- const { tasks } = useTasks();
+
+  const { tasks } = useTasks();
+
+  const [settings] = useLocalStorage("studyflow-settings", {
+    displayName: "",
+    studyDuration: 25,
+    compactMode: false,
+  });
+
+  // Task statistics
   const totalTasks = tasks.length;
+
   const completedTasks = tasks.filter((task) => task.completed).length;
+
   const pendingTasks = totalTasks - completedTasks;
+
+  const highPriorityTasks = tasks.filter(
+    (task) => !task.completed && task.priority === "High",
+  ).length;
+
   const progress =
     totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+  // Upcoming tasks
   const upcomingTasks = tasks
     .filter((task) => !task.completed)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-    .slice(0, 3);
-    const [settings] = useLocalStorage("studyflow-settings", {
-      displayName: "",
-      studyDuration: 25,
-      compactMode: false,
-    });
+    .slice(0, 4);
+
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const priorityStyles = {
+    High: "bg-[#F5E1DC] text-[#A4563E]",
+    Medium: "bg-[#F3EBDD] text-[#96713E]",
+    Low: "bg-[#E9E5DD] text-[#71675C]",
+  };
 
   return (
-    <main className="min-h-screen bg-[#F7F4EF]">
-      <div className="mx-auto max-w-6xl space-y-8">
-        {/* Welcome section */}
-        <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-          <div>
-            <p></p>
-            <h1>
-              Welcome back
-              {settings.displayName ? `, ${settings.displayName}` : ""}!
-            </h1>
+    <div className="mx-auto max-w-7xl space-y-8">
+      {/* Welcome section */}
+      <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-medium text-[#A18F86]">{today}</p>
 
-            <p className="mt-2 text-sm text-[#766F78]">
-              Organize your learning and make every study session count.
-            </p>
-          </div>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#302B32] sm:text-3xl">
+            Welcome back
+            {settings.displayName ? `, ${settings.displayName}` : ""}!
+          </h1>
 
-          <a
-            href="/tasks"
-            className="inline-flex w-fit items-center justify-center rounded-xl bg-[#3B3044] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#51425B]"
+          <p className="mt-2 max-w-xl text-sm leading-6 text-[#897D76]">
+            Your learning journey continues here. Take a look at your progress
+            and plan your next step.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to="/focus"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#DCCFC7] bg-white px-4 py-3 text-sm font-semibold text-[#51434A] transition hover:bg-[#F3EBDD]"
           >
-            View my tasks
-            <span className="ml-2">→</span>
-          </a>
-        </section>
+            <span>◷</span>
+            Focus session
+          </Link>
 
-        {/* Summary cards */}
-        <section className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-          {/* Total tasks */}
-          <div className="rounded-2xl border border-[#E5D9EC] bg-[#EAE2F1] p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-[#685675]">
-                Total tasks
+          <Link
+            to="/tasks"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#C8795D] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#AD634B]"
+          >
+            <span>+</span>
+            Manage tasks
+          </Link>
+        </div>
+      </section>
+
+      {/* Summary cards */}
+      <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Total tasks */}
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">Total tasks</p>
+
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F3EBDD] text-lg text-[#96713E]">
+              ▤
+            </span>
+          </div>
+
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {totalTasks.toString().padStart(2, "0")}
+          </p>
+
+          <p className="mt-2 text-xs text-[#A18F86]">All your study tasks</p>
+        </div>
+
+        {/* Completed tasks */}
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">Completed</p>
+
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E9E8DF] text-lg text-[#777B5D]">
+              ✓
+            </span>
+          </div>
+
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {completedTasks.toString().padStart(2, "0")}
+          </p>
+
+          <p className="mt-2 text-xs text-[#A18F86]">Tasks you have finished</p>
+        </div>
+
+        {/* Pending tasks */}
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">Pending</p>
+
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5E1DC] text-lg text-[#A4563E]">
+              ◷
+            </span>
+          </div>
+
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {pendingTasks.toString().padStart(2, "0")}
+          </p>
+
+          <p className="mt-2 text-xs text-[#A18F86]">Tasks still to complete</p>
+        </div>
+
+        {/* High priority tasks */}
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">High priority</p>
+
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1E2E0] text-lg text-[#A4563E]">
+              !
+            </span>
+          </div>
+
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {highPriorityTasks.toString().padStart(2, "0")}
+          </p>
+
+          <p className="mt-2 text-xs text-[#A18F86]">Tasks needing attention</p>
+        </div>
+      </section>
+
+      {/* Main dashboard panels */}
+      <section className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        {/* Study progress */}
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-6 shadow-sm xl:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-[#302B32]">
+                Your study overview
+              </h2>
+
+              <p className="mt-1 text-sm text-[#A18F86]">
+                Track your progress and celebrate your achievements.
               </p>
-
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 text-lg text-[#806A91]">
-                ▤
-              </span>
             </div>
 
-            <p className="mt-5 text-3xl font-bold text-[#493A55]">
-              {totalTasks.toString().padStart(2, "0")}
-            </p>
-
-            <p className="mt-2 text-xs text-[#766B7E]">
-              Tasks in your study list
-            </p>
+            <span className="rounded-lg bg-[#F3EBDD] px-3 py-2 text-xs font-semibold text-[#96713E]">
+              Overall progress
+            </span>
           </div>
 
-          {/* Completed tasks */}
-          <div className="rounded-2xl border border-[#E2E4DC] bg-[#E9ECE5] p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-[#58634F]">Completed</p>
-
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 text-lg text-[#687B61]">
-                ✓
-              </span>
-            </div>
-
-            <p className="mt-5 text-3xl font-bold text-[#465641]">
-              {completedTasks.toString().padStart(2, "0")}
-            </p>
-
-            <p className="mt-2 text-xs text-[#74806E]">
-              Tasks successfully finished
-            </p>
-          </div>
-
-          {/* Pending tasks */}
-          <div className="rounded-2xl border border-[#EBD9DE] bg-[#F1E1E3] p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-[#875E6C]">Pending</p>
-
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 text-lg text-[#A36F80]">
-                ◷
-              </span>
-            </div>
-
-            <p className="mt-5 text-3xl font-bold text-[#79505F]">
-              {pendingTasks.toString().padStart(2, "0")}
-            </p>
-
-            <p className="mt-2 text-xs text-[#916E79]">Tasks waiting for you</p>
-          </div>
-        </section>
-
-        {/* Dashboard content */}
-        <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-          {/* Upcoming tasks */}
-          <div className="rounded-2xl border border-[#EAE4DE] bg-white p-6 lg:col-span-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-[#302B32]">
-                  Upcoming tasks
-                </h2>
-
-                <p className="mt-1 text-sm text-[#938B94]">
-                  Stay on top of your study schedule
-                </p>
-              </div>
-
-              <a
-                href="/tasks"
-                className="rounded-lg px-3 py-2 text-sm font-semibold text-[#806A91] transition hover:bg-[#F2EDF5]"
-              >
-                View all →
-              </a>
-            </div>
-
-            {/* Display upcoming tasks */}
-            <div className="mt-6 space-y-3">
-              {upcomingTasks.length > 0 ? (
-                upcomingTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex flex-col justify-between gap-3 rounded-xl border border-[#EEE9E5] p-4 sm:flex-row sm:items-center"
-                  >
-                    <div>
-                      <h3 className="font-semibold text-[#302B32]">
-                        {task.title}
-                      </h3>
-
-                      <p className="mt-1 text-xs text-[#938B94]">
-                        {task.subject} · Due {task.dueDate}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`w-fit rounded-lg px-3 py-1 text-xs font-semibold ${
-                        task.priority === "High"
-                          ? "bg-[#F1E1E3] text-[#79505F]"
-                          : task.priority === "Medium"
-                            ? "bg-[#EAE2F1] text-[#685675]"
-                            : "bg-[#E9ECE5] text-[#58634F]"
-                      }`}
-                    >
-                      {task.priority}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl bg-[#F8F5FA] px-5 text-center">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAE2F1] text-xl text-[#806A91]">
-                    ✦
-                  </div>
-
-                  <p className="text-sm font-semibold text-[#493A55]">
-                    No upcoming tasks
-                  </p>
-
-                  <p className="mt-2 max-w-sm text-xs leading-5 text-[#938B94]">
-                    Your upcoming study tasks will appear here. Add a task and
-                    start organizing your learning.
-                  </p>
-
-                  <a
-                    href="/tasks"
-                    className="mt-4 text-xs font-bold text-[#806A91] hover:underline"
-                  >
-                    Add your first task
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Study progress */}
-          <div className="rounded-2xl border border-[#EAE4DE] bg-white p-6">
-            <h2 className="text-lg font-bold text-[#302B32]">Study progress</h2>
-
-            <p className="mt-1 text-sm text-[#938B94]">
-              Your completion overview
-            </p>
-
-            <div className="mt-7 flex flex-col items-center">
+          <div className="mt-8 grid grid-cols-1 items-center gap-8 md:grid-cols-2">
+            {/* Progress circle */}
+            <div className="flex flex-col items-center justify-center">
               <div
-                className="flex h-36 w-36 items-center justify-center rounded-full"
+                className="flex h-44 w-44 items-center justify-center rounded-full"
                 style={{
-                  background: `conic-gradient(#806A91 ${progress}%, #EEE8F1 ${progress}% 100%)`,
+                  background: `conic-gradient(#C8795D ${progress}%, #F1E9E3 ${progress}% 100%)`,
                 }}
               >
-                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white">
-                  <span className="text-3xl font-bold text-[#493A55]">
+                <div className="flex h-36 w-36 flex-col items-center justify-center rounded-full bg-white">
+                  <span className="text-4xl font-bold text-[#302B32]">
                     {progress}%
                   </span>
+
+                  <span className="mt-1 text-xs text-[#A18F86]">Completed</span>
                 </div>
               </div>
 
-              <p className="mt-5 text-center text-sm font-bold text-[#493A55]">
+              <p className="mt-5 text-sm font-semibold text-[#51434A]">
                 {progress === 100
-                  ? "All tasks completed!"
+                  ? "Amazing! Everything is complete."
                   : progress > 0
-                    ? "Good progress!"
-                    : "Ready to get started?"}
-              </p>
-
-              <p className="mt-1 text-center text-xs text-[#938B94]">
-                Keep building your study habits.
+                    ? "You're making progress!"
+                    : "Your journey starts here!"}
               </p>
             </div>
 
-            <div className="mt-7 space-y-4 border-t border-[#F0EBE6] pt-5">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#819176]" />
-                  <span className="text-[#766F78]">Completed</span>
+            {/* Progress details */}
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-[#51434A]">
+                    Completed tasks
+                  </p>
+
+                  <p className="text-sm font-bold text-[#51434A]">
+                    {completedTasks}
+                  </p>
                 </div>
 
-                <span className="font-semibold text-[#465641]">
-                  {completedTasks}
-                </span>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1E9E3]">
+                  <div
+                    className="h-full rounded-full bg-[#8B8D6A] transition-all"
+                    style={{
+                      width: `${progress}%`,
+                    }}
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#C48C9B]" />
-                  <span className="text-[#766F78]">Remaining</span>
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-[#51434A]">
+                    Pending tasks
+                  </p>
+
+                  <p className="text-sm font-bold text-[#51434A]">
+                    {pendingTasks}
+                  </p>
                 </div>
 
-                <span className="font-semibold text-[#79505F]">
-                  {pendingTasks}
-                </span>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1E9E3]">
+                  <div
+                    className="h-full rounded-full bg-[#C8795D] transition-all"
+                    style={{
+                      width: `${
+                        totalTasks === 0 ? 0 : (pendingTasks / totalTasks) * 100
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-[#F7F3EE] p-4">
+                <p className="text-sm font-semibold text-[#51434A]">
+                  Keep going!
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[#897D76]">
+                  Every completed task brings you one step closer to your
+                  learning goals.
+                </p>
               </div>
             </div>
           </div>
-        </section>
-      </div>
-    </main>
+        </div>
+
+        {/* Focus session card */}
+        <div className="rounded-2xl bg-[#302B32] p-6 text-white shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-[#E8D5CC]">
+              Focus room
+            </span>
+
+            <span className="text-xl text-[#D99A7D]">◷</span>
+          </div>
+
+          <h2 className="mt-7 text-xl font-bold">Ready to focus?</h2>
+
+          <p className="mt-2 text-sm leading-6 text-[#C9BDB8]">
+            Take some dedicated time to study without distractions.
+          </p>
+
+          <div className="mt-7 rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs text-[#C9BDB8]">Your study session</p>
+
+            <p className="mt-2 text-3xl font-bold">
+              {settings.studyDuration || 25}
+              <span className="ml-2 text-sm font-medium text-[#C9BDB8]">
+                minutes
+              </span>
+            </p>
+          </div>
+
+          <Link
+            to="/focus"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#C8795D] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#AD634B]"
+          >
+            Start focusing
+            <span>→</span>
+          </Link>
+        </div>
+      </section>
+
+      {/* Upcoming tasks */}
+      <section className="rounded-2xl border border-[#E8DED6] bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-[#302B32]">Upcoming tasks</h2>
+
+            <p className="mt-1 text-sm text-[#A18F86]">
+              Your next tasks to work on.
+            </p>
+          </div>
+
+          <Link
+            to="/tasks"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-[#B66D52] transition hover:bg-[#F7F3EE]"
+          >
+            View all tasks →
+          </Link>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {upcomingTasks.length > 0 ? (
+            upcomingTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex flex-col justify-between gap-3 rounded-xl border border-[#EEE7E1] p-4 transition hover:border-[#DCCFC7] hover:bg-[#FCFAF8] sm:flex-row sm:items-center"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F3EBDD] text-sm text-[#96713E]">
+                    ▤
+                  </span>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#302B32]">
+                      {task.title}
+                    </h3>
+
+                    <p className="mt-1 text-xs text-[#A18F86]">
+                      {task.subject} · Due {task.dueDate}
+                    </p>
+                  </div>
+                </div>
+
+                <span
+                  className={`w-fit rounded-lg px-3 py-2 text-xs font-semibold ${
+                    priorityStyles[task.priority] ||
+                    "bg-[#E9E5DD] text-[#71675C]"
+                  }`}
+                >
+                  {task.priority} priority
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-xl bg-[#F7F3EE] px-5 py-10 text-center">
+              <span className="text-3xl text-[#C8795D]">✦</span>
+
+              <h3 className="mt-3 text-sm font-bold text-[#302B32]">
+                You're all caught up!
+              </h3>
+
+              <p className="mt-2 max-w-sm text-xs leading-5 text-[#897D76]">
+                There are no pending tasks right now. Add a new task whenever
+                you're ready for your next challenge.
+              </p>
+
+              <Link
+                to="/tasks"
+                className="mt-4 rounded-lg bg-[#C8795D] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#AD634B]"
+              >
+                Add a task
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 

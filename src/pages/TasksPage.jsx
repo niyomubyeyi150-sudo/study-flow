@@ -1,12 +1,14 @@
 import { useState } from "react";
-import initialTasks from "../data/initialTasks";
-import useLocalStorage from "../hooks/useLocalStorage";
+import { useTasks } from "../context/TasksContext";
 import useToggle from "../hooks/useToggle";
 import useDocumentTitle from "../hooks/useDocumentTitle";
 import useDebounce from "../hooks/useDebounce";
+
 function TasksPage() {
-  useDocumentTitle("tasks");
-const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
+  useDocumentTitle("Tasks");
+
+  // Shared tasks from TasksContext
+  const { tasks, setTasks } = useTasks();
 
   // Form states
   const [title, setTitle] = useState("");
@@ -16,7 +18,7 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
   const [error, setError] = useState("");
 
   // Modal and editing states
- const [isFormOpen, toggleForm, setIsFormOpen] = useToggle(false);
+  const [isFormOpen, toggleForm, setIsFormOpen] = useToggle(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
 
   // Search, filter, and sort states
@@ -24,6 +26,17 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [filter, setFilter] = useState("All");
   const [sortBy, setSortBy] = useState("dueDate");
+
+  // Task statistics
+  const totalTasks = tasks.length;
+
+  const completedCount = tasks.filter((task) => task.completed).length;
+
+  const pendingCount = totalTasks - completedCount;
+
+  const highPriorityCount = tasks.filter(
+    (task) => !task.completed && task.priority === "High",
+  ).length;
 
   // Reset form fields
   const resetForm = () => {
@@ -38,7 +51,7 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
   // Open form for adding a task
   const openAddForm = () => {
     resetForm();
-  toggleForm();
+    setIsFormOpen(true);
   };
 
   // Close form
@@ -51,13 +64,11 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    // Validate required fields
     if (!title.trim() || !subject.trim() || !dueDate) {
       setError("Please fill in all fields.");
       return;
     }
 
-    // Validate due date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -69,7 +80,6 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
     }
 
     if (editingTaskId !== null) {
-      // Update existing task
       setTasks((currentTasks) =>
         currentTasks.map((task) =>
           task.id === editingTaskId
@@ -84,7 +94,6 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
         ),
       );
     } else {
-      // Create a new task
       const newTask = {
         id: Date.now(),
         title: title.trim(),
@@ -94,14 +103,13 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
         completed: false,
       };
 
-      // Add task immutably
       setTasks((currentTasks) => [...currentTasks, newTask]);
     }
 
     closeForm();
   };
 
-  // Open form with existing task information
+  // Edit an existing task
   const handleEditTask = (task) => {
     setEditingTaskId(task.id);
     setTitle(task.title);
@@ -134,126 +142,189 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
     );
   };
 
-  // Filter and sort tasks
- const filteredTasks = tasks
-   .filter((task) => {
-     return (
-       task.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-       task.subject.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-     );
-   })
-   .sort((a, b) => {
-     if (sortBy === "dueDate") {
-       return a.dueDate.localeCompare(b.dueDate);
-     }
+  // Search, filter, and sort tasks
+  const filteredTasks = tasks
+    .filter((task) => {
+      const matchesSearch =
+        task.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        task.subject.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
 
-     if (sortBy === "title") {
-       return a.title.localeCompare(b.title);
-     }
+      const matchesFilter =
+        filter === "All" ||
+        (filter === "Pending" && !task.completed) ||
+        (filter === "Completed" && task.completed) ||
+        (["High", "Medium", "Low"].includes(filter) &&
+          task.priority === filter);
 
-     if (sortBy === "priority") {
-       const priorityOrder = {
-         High: 1,
-         Medium: 2,
-         Low: 3,
-       };
+      return matchesSearch && matchesFilter;
+    })
+    .sort((a, b) => {
+      if (sortBy === "dueDate") {
+        return a.dueDate.localeCompare(b.dueDate);
+      }
 
-       return priorityOrder[a.priority] - priorityOrder[b.priority];
-     }
+      if (sortBy === "title") {
+        return a.title.localeCompare(b.title);
+      }
 
-     return 0;
-   });
+      if (sortBy === "priority") {
+        const priorityOrder = {
+          High: 1,
+          Medium: 2,
+          Low: 3,
+        };
 
-  const completedCount = tasks.filter((task) => task.completed).length;
-  const pendingCount = tasks.length - completedCount;
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      }
+
+      return 0;
+    });
+
+  // Reset search and filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilter("All");
+    setSortBy("dueDate");
+  };
+
+  const today = new Date().toLocaleDateString("en-CA");
+
+  const priorityStyles = {
+    High: "bg-[#F5E1DC] text-[#A4563E]",
+    Medium: "bg-[#F3EBDD] text-[#96713E]",
+    Low: "bg-[#E9E5DD] text-[#71675C]",
+  };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-7xl space-y-8">
       {/* Page heading */}
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#806A91]">
-            Stay organized
-          </p>
+          <p className="text-sm font-medium text-[#A18F86]">YOUR WORKSPACE</p>
 
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#302B32]">
             My Tasks
           </h1>
 
-          <p className="mt-2 text-sm text-[#766F78]">
-            Manage your study activities and keep track of your progress.
+          <p className="mt-2 text-sm leading-6 text-[#897D76]">
+            Plan your activities, organize your priorities, and keep moving
+            towards your learning goals.
           </p>
         </div>
 
-        <div className="flex gap-3">
-          <div className="rounded-xl bg-[#EAE2F1] px-5 py-3">
-            <p className="text-xs font-medium text-[#685675]">Total tasks</p>
-            <p className="mt-1 text-2xl font-bold text-[#493A55]">
-              {tasks.length.toString().padStart(2, "0")}
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-[#E9ECE5] px-5 py-3">
-            <p className="text-xs font-medium text-[#58634F]">Completed</p>
-            <p className="mt-1 text-2xl font-bold text-[#465641]">
-              {completedCount.toString().padStart(2, "0")}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Add task button */}
-      <section className="flex justify-end">
         <button
           type="button"
           onClick={openAddForm}
-          className="rounded-xl bg-[#3B3044] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#51425B]"
+          className="inline-flex w-fit items-center justify-center gap-2 rounded-xl bg-[#C8795D] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#AD634B]"
         >
-          + Add task
+          <span className="text-lg">+</span>
+          Add new task
         </button>
       </section>
 
-      {/* Add and edit task modal */}
+      {/* Task summary cards */}
+      <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">Total tasks</p>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F3EBDD] text-lg text-[#96713E]">
+              ▤
+            </span>
+          </div>
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {totalTasks.toString().padStart(2, "0")}
+          </p>
+          <p className="mt-2 text-xs text-[#A18F86]">
+            All your study activities
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">Completed</p>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E9E8DF] text-lg text-[#777B5D]">
+              ✓
+            </span>
+          </div>
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {completedCount.toString().padStart(2, "0")}
+          </p>
+          <p className="mt-2 text-xs text-[#A18F86]">Successfully finished</p>
+        </div>
+
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">Pending</p>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5E1DC] text-lg text-[#A4563E]">
+              ◷
+            </span>
+          </div>
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {pendingCount.toString().padStart(2, "0")}
+          </p>
+          <p className="mt-2 text-xs text-[#A18F86]">
+            Waiting for your attention
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[#897D76]">High priority</p>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1E2E0] text-lg text-[#A4563E]">
+              !
+            </span>
+          </div>
+          <p className="mt-5 text-3xl font-bold text-[#302B32]">
+            {highPriorityCount.toString().padStart(2, "0")}
+          </p>
+          <p className="mt-2 text-xs text-[#A18F86]">Pending important tasks</p>
+        </div>
+      </section>
+
+      {/* Task form modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#302B32]/60 px-4 py-6 backdrop-blur-sm">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="task-form-title"
-            className="my-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
+            className="my-auto w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl sm:p-8"
           >
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-7 flex items-start justify-between">
               <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#C8795D]">
+                  HUBNEST WORKSPACE
+                </p>
+
                 <h2
                   id="task-form-title"
-                  className="text-xl font-bold text-[#302B32]"
+                  className="mt-2 text-xl font-bold text-[#302B32]"
                 >
-                  {editingTaskId !== null ? "Edit task" : "Add a new task"}
+                  {editingTaskId !== null ? "Edit task" : "Create a new task"}
                 </h2>
 
-                <p className="mt-1 text-sm text-[#938B94]">
+                <p className="mt-1 text-sm text-[#897D76]">
                   {editingTaskId !== null
                     ? "Update your study activity."
-                    : "Plan your next learning activity."}
+                    : "Add a new activity to your study plan."}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeForm}
-                className="rounded-lg px-3 py-2 text-xl text-[#766F78] hover:bg-[#F4F0F5]"
                 aria-label="Close form"
+                className="rounded-lg px-3 py-2 text-xl text-[#897D76] transition hover:bg-[#F7F3EE]"
               >
                 ×
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Task title */}
               <div>
                 <label
                   htmlFor="title"
-                  className="mb-2 block text-sm font-medium text-[#493A55]"
+                  className="mb-2 block text-sm font-semibold text-[#51434A]"
                 >
                   Task title
                 </label>
@@ -267,16 +338,15 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
                     setError("");
                   }}
                   placeholder="e.g. Complete React assignment"
-                  className="w-full rounded-xl border border-[#E5DDE9] px-4 py-3 text-sm outline-none focus:border-[#806A91] focus:ring-2 focus:ring-[#EAE2F1]"
+                  className="w-full rounded-xl border border-[#E8DED6] px-4 py-3 text-sm text-[#302B32] outline-none transition focus:border-[#C8795D] focus:ring-2 focus:ring-[#F5E1DC]"
                 />
               </div>
 
-              {/* Subject and due date */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
                   <label
                     htmlFor="subject"
-                    className="mb-2 block text-sm font-medium text-[#493A55]"
+                    className="mb-2 block text-sm font-semibold text-[#51434A]"
                   >
                     Subject
                   </label>
@@ -290,14 +360,14 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
                       setError("");
                     }}
                     placeholder="e.g. JavaScript"
-                    className="w-full rounded-xl border border-[#E5DDE9] px-4 py-3 text-sm outline-none focus:border-[#806A91] focus:ring-2 focus:ring-[#EAE2F1]"
+                    className="w-full rounded-xl border border-[#E8DED6] px-4 py-3 text-sm text-[#302B32] outline-none transition focus:border-[#C8795D] focus:ring-2 focus:ring-[#F5E1DC]"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="dueDate"
-                    className="mb-2 block text-sm font-medium text-[#493A55]"
+                    className="mb-2 block text-sm font-semibold text-[#51434A]"
                   >
                     Due date
                   </label>
@@ -305,60 +375,60 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
                   <input
                     id="dueDate"
                     type="date"
-                    min={new Date().toLocaleDateString("en-CA")}
+                    min={today}
                     value={dueDate}
                     onChange={(event) => {
                       setDueDate(event.target.value);
                       setError("");
                     }}
-                    className="w-full rounded-xl border border-[#E5DDE9] px-4 py-3 text-sm outline-none focus:border-[#806A91] focus:ring-2 focus:ring-[#EAE2F1]"
+                    className="w-full rounded-xl border border-[#E8DED6] px-4 py-3 text-sm text-[#302B32] outline-none transition focus:border-[#C8795D] focus:ring-2 focus:ring-[#F5E1DC]"
                   />
                 </div>
               </div>
 
-              {/* Priority */}
               <div>
                 <label
                   htmlFor="priority"
-                  className="mb-2 block text-sm font-medium text-[#493A55]"
+                  className="mb-2 block text-sm font-semibold text-[#51434A]"
                 >
-                  Priority
+                  Priority level
                 </label>
 
                 <select
                   id="priority"
                   value={priority}
                   onChange={(event) => setPriority(event.target.value)}
-                  className="w-full rounded-xl border border-[#E5DDE9] bg-white px-4 py-3 text-sm outline-none focus:border-[#806A91] focus:ring-2 focus:ring-[#EAE2F1]"
+                  className="w-full rounded-xl border border-[#E8DED6] bg-white px-4 py-3 text-sm text-[#302B32] outline-none transition focus:border-[#C8795D] focus:ring-2 focus:ring-[#F5E1DC]"
                 >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
+                  <option value="Low">Low priority</option>
+                  <option value="Medium">Medium priority</option>
+                  <option value="High">High priority</option>
                 </select>
               </div>
 
-              {/* Error message */}
               {error && (
-                <p role="alert" className="text-sm font-medium text-red-600">
+                <p
+                  role="alert"
+                  className="rounded-lg bg-[#FBEDEC] px-4 py-3 text-sm font-medium text-[#A4563E]"
+                >
                   {error}
                 </p>
               )}
 
-              {/* Form actions */}
-              <div className="flex justify-end gap-3 border-t border-[#F0EBE6] pt-5">
+              <div className="flex justify-end gap-3 border-t border-[#EEE7E1] pt-5">
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="rounded-xl border border-[#E5DDE9] px-5 py-3 text-sm font-semibold text-[#766F78] transition hover:bg-[#F8F5FA]"
+                  className="rounded-xl border border-[#E8DED6] px-5 py-3 text-sm font-semibold text-[#71675C] transition hover:bg-[#F7F3EE]"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="rounded-xl bg-[#3B3044] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#51425B]"
+                  className="rounded-xl bg-[#C8795D] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#AD634B]"
                 >
-                  {editingTaskId !== null ? "Save changes" : "Save task"}
+                  {editingTaskId !== null ? "Save changes" : "Create task"}
                 </button>
               </div>
             </form>
@@ -366,87 +436,86 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
         </div>
       )}
 
-      {/* Search, filter, and sort */}
-      <section className="rounded-2xl border border-[#EAE4DE] bg-white p-5">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {/* Search */}
-          <div>
+      {/* Search, filter and sort */}
+      <section className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div className="flex-1">
             <label
               htmlFor="search"
-              className="mb-2 block text-sm font-medium text-[#493A55]"
+              className="mb-2 block text-sm font-semibold text-[#51434A]"
             >
-              Search tasks
+              Search your tasks
             </label>
 
-            <input
-              id="search"
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by title or subject..."
-              className="w-full rounded-xl border border-[#E5DDE9] px-4 py-3 text-sm outline-none focus:border-[#806A91] focus:ring-2 focus:ring-[#EAE2F1]"
-            />
+            <div className="flex items-center gap-3 rounded-xl border border-[#E8DED6] px-4 py-3 transition focus-within:border-[#C8795D] focus-within:ring-2 focus-within:ring-[#F5E1DC]">
+              <span className="text-[#A18F86]">⌕</span>
+
+              <input
+                id="search"
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by title or subject..."
+                className="w-full bg-transparent text-sm text-[#302B32] outline-none placeholder:text-[#B1A59D]"
+              />
+            </div>
           </div>
 
-          {/* Filter */}
-          <div>
-            <label
-              htmlFor="filter"
-              className="mb-2 block text-sm font-medium text-[#493A55]"
-            >
-              Filter by
-            </label>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:w-[390px]">
+            <div>
+              <label
+                htmlFor="filter"
+                className="mb-2 block text-sm font-semibold text-[#51434A]"
+              >
+                Filter
+              </label>
 
-            <select
-              id="filter"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              className="w-full rounded-xl border border-[#E5DDE9] bg-white px-4 py-3 text-sm outline-none focus:border-[#806A91] focus:ring-2 focus:ring-[#EAE2F1]"
-            >
-              <option value="All">All tasks</option>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
-              <option value="High">High priority</option>
-              <option value="Medium">Medium priority</option>
-              <option value="Low">Low priority</option>
-            </select>
-          </div>
+              <select
+                id="filter"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                className="w-full rounded-xl border border-[#E8DED6] bg-white px-3 py-3 text-sm text-[#51434A] outline-none focus:border-[#C8795D]"
+              >
+                <option value="All">All tasks</option>
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+                <option value="High">High priority</option>
+                <option value="Medium">Medium priority</option>
+                <option value="Low">Low priority</option>
+              </select>
+            </div>
 
-          {/* Sort */}
-          <div>
-            <label
-              htmlFor="sort"
-              className="mb-2 block text-sm font-medium text-[#493A55]"
-            >
-              Sort by
-            </label>
+            <div>
+              <label
+                htmlFor="sort"
+                className="mb-2 block text-sm font-semibold text-[#51434A]"
+              >
+                Sort by
+              </label>
 
-            <select
-              id="sort"
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value)}
-              className="w-full rounded-xl border border-[#E5DDE9] bg-white px-4 py-3 text-sm outline-none focus:border-[#806A91] focus:ring-2 focus:ring-[#EAE2F1]"
-            >
-              <option value="dueDate">Due date</option>
-              <option value="priority">Priority</option>
-              <option value="title">Title (A–Z)</option>
-            </select>
+              <select
+                id="sort"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                className="w-full rounded-xl border border-[#E8DED6] bg-white px-3 py-3 text-sm text-[#51434A] outline-none focus:border-[#C8795D]"
+              >
+                <option value="dueDate">Due date</option>
+                <option value="priority">Priority</option>
+                <option value="title">Title (A–Z)</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#F0EBE6] pt-4">
-          <p className="text-xs text-[#938B94]">
-            Showing {filteredTasks.length} of {tasks.length} tasks
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#EEE7E1] pt-4">
+          <p className="text-xs text-[#A18F86]">
+            Showing {filteredTasks.length} of {totalTasks} tasks
           </p>
 
           <button
             type="button"
-            onClick={() => {
-              setSearchTerm("");
-              setFilter("All");
-              setSortBy("dueDate");
-            }}
-            className="text-xs font-semibold text-[#806A91] hover:underline"
+            onClick={clearFilters}
+            className="text-xs font-semibold text-[#B66D52] transition hover:underline"
           >
             Clear filters
           </button>
@@ -454,17 +523,17 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
       </section>
 
       {/* Task list */}
-      <section className="rounded-2xl border border-[#EAE4DE] bg-white p-6">
+      <section className="rounded-2xl border border-[#E8DED6] bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-[#302B32]">All tasks</h2>
+            <h2 className="text-lg font-bold text-[#302B32]">Your task list</h2>
 
-            <p className="mt-1 text-sm text-[#938B94]">
-              Your current study activities
+            <p className="mt-1 text-sm text-[#A18F86]">
+              Keep track of everything you need to accomplish.
             </p>
           </div>
 
-          <span className="text-xs font-medium text-[#938B94]">
+          <span className="rounded-lg bg-[#F7F3EE] px-3 py-2 text-xs font-semibold text-[#71675C]">
             {pendingCount} pending · {completedCount} completed
           </span>
         </div>
@@ -474,64 +543,62 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
             filteredTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex flex-col justify-between gap-4 rounded-xl border border-[#EEE9E5] p-4 transition hover:border-[#D9C9E5] sm:flex-row sm:items-center"
+                className="flex flex-col justify-between gap-4 rounded-xl border border-[#EEE7E1] p-4 transition hover:border-[#DCCFC7] hover:bg-[#FCFAF8] sm:flex-row sm:items-center"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <input
                     type="checkbox"
                     checked={task.completed}
                     onChange={() => handleToggleComplete(task.id)}
-                    className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-[#806A91]"
                     aria-label={`Mark ${task.title} as ${
                       task.completed ? "pending" : "completed"
                     }`}
+                    className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-[#C8795D]"
                   />
 
                   <div className="min-w-0">
                     <h3
-                      className={`break-words font-semibold ${
+                      className={`break-words text-sm font-semibold ${
                         task.completed
-                          ? "text-[#938B94] line-through"
+                          ? "text-[#A18F86] line-through"
                           : "text-[#302B32]"
                       }`}
                     >
                       {task.title}
                     </h3>
 
-                    <p className="mt-1 text-xs text-[#938B94]">
+                    <p className="mt-1 text-xs text-[#A18F86]">
                       {task.subject} · Due {task.dueDate}
                     </p>
 
-                    <span
-                      className={`mt-2 inline-block rounded-lg px-3 py-1 text-xs font-semibold ${
-                        task.priority === "High"
-                          ? "bg-[#F1E1E3] text-[#79505F]"
-                          : task.priority === "Medium"
-                            ? "bg-[#EAE2F1] text-[#685675]"
-                            : "bg-[#E9ECE5] text-[#58634F]"
-                      }`}
-                    >
-                      {task.priority} priority
-                    </span>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                          priorityStyles[task.priority] ||
+                          "bg-[#E9E5DD] text-[#71675C]"
+                        }`}
+                      >
+                        {task.priority} priority
+                      </span>
 
-                    <span
-                      className={`ml-2 inline-block rounded-lg px-3 py-1 text-xs font-semibold ${
-                        task.completed
-                          ? "bg-[#E9ECE5] text-[#58634F]"
-                          : "bg-[#F8F0E4] text-[#947343]"
-                      }`}
-                    >
-                      {task.completed ? "Completed" : "Pending"}
-                    </span>
+                      <span
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                          task.completed
+                            ? "bg-[#E9E8DF] text-[#777B5D]"
+                            : "bg-[#F3EBDD] text-[#96713E]"
+                        }`}
+                      >
+                        {task.completed ? "Completed" : "Pending"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Edit and delete buttons */}
                 <div className="flex shrink-0 gap-2 sm:justify-end">
                   <button
                     type="button"
                     onClick={() => handleEditTask(task)}
-                    className="rounded-lg border border-[#E5DDE9] px-3 py-2 text-xs font-semibold text-[#685675] transition hover:bg-[#F4EFF7]"
+                    className="rounded-lg border border-[#E8DED6] px-4 py-2 text-xs font-semibold text-[#71675C] transition hover:bg-[#F3EBDD]"
                   >
                     Edit
                   </button>
@@ -539,7 +606,7 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
                   <button
                     type="button"
                     onClick={() => handleDeleteTask(task.id)}
-                    className="rounded-lg border border-[#EBD9DE] px-3 py-2 text-xs font-semibold text-[#965E6E] transition hover:bg-[#F8EAED]"
+                    className="rounded-lg border border-[#EBD9D5] px-4 py-2 text-xs font-semibold text-[#A4563E] transition hover:bg-[#F5E1DC]"
                   >
                     Delete
                   </button>
@@ -547,19 +614,40 @@ const [tasks, setTasks] = useLocalStorage("studyflow-tasks", initialTasks);
               </div>
             ))
           ) : (
-            <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl bg-[#F8F5FA] px-5 text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAE2F1] text-xl text-[#806A91]">
+            <div className="flex min-h-56 flex-col items-center justify-center rounded-xl bg-[#F7F3EE] px-5 py-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EBDD] text-2xl text-[#C8795D]">
                 ✦
               </div>
 
-              <p className="text-sm font-semibold text-[#493A55]">
-                No tasks found
+              <h3 className="mt-4 text-sm font-bold text-[#302B32]">
+                {totalTasks === 0
+                  ? "Your task list is empty"
+                  : "No matching tasks"}
+              </h3>
+
+              <p className="mt-2 max-w-sm text-xs leading-5 text-[#897D76]">
+                {totalTasks === 0
+                  ? "Start organizing your learning by creating your first task."
+                  : "Try changing your search or filter to find the task you're looking for."}
               </p>
 
-              <p className="mt-2 max-w-sm text-xs leading-5 text-[#938B94]">
-                There are no tasks matching your search or selected filter. Try
-                changing your search or clearing the filters.
-              </p>
+              {totalTasks === 0 ? (
+                <button
+                  type="button"
+                  onClick={openAddForm}
+                  className="mt-5 rounded-xl bg-[#C8795D] px-5 py-3 text-xs font-semibold text-white transition hover:bg-[#AD634B]"
+                >
+                  Create your first task
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-5 text-xs font-semibold text-[#B66D52] hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           )}
         </div>
